@@ -15,6 +15,7 @@ AI event ideas and chat: Gemini-powered assistance with request limits, timeouts
 Club logos: HTTPS logo URLs with validation and initials as a fallback.
 Gothic academic visual theme: includes light and dark theme support.
 Organization chart: a visual view of club/organization structure.
+
 Tech Stack
 Layer	Technologies
 Frontend	React 19, Vite 8, React Router 7, JavaScript
@@ -23,6 +24,7 @@ Database	MongoDB Atlas, Mongoose 9
 AI	Google Gemini via @google/genai
 Testing	Vitest, Testing Library, Playwright
 Tooling	npm, Git, GitHub
+
 Project Structure
 Rotom/
 ├── backend/
@@ -35,14 +37,16 @@ Rotom/
 │   ├── ...
 │   └── .env.example
 └── README.md
+
 Requirements
 Node.js (use a current supported LTS release compatible with the project)
 npm
 A MongoDB Atlas database
 A Gemini API key for AI features
+
+
 Local Setup
 Run commands from the project root, C:\dev\Rotom, unless a step says otherwise.
-
 1. Install dependencies
 npm install --prefix backend
 npm install --prefix frontend
@@ -50,7 +54,6 @@ npm install --prefix frontend
 Copy backend/.env.example to backend/.env and fill in the values for your local environment. Configure frontend/.env only if you need to override the frontend API URL.
 
 Backend variables:
-
 PORT=5000
 MONGODB_URI=your_mongodb_connection_string
 JWT_SECRET=your_local_random_secret
