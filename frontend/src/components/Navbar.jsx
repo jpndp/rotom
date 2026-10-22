@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContextValue';
+import { useTheme } from '../context/ThemeContextValue';
 
 function Navbar() {
   const { user, logout, loading } = useAuth();

@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import Navbar from './components/Navbar';
+import PinnedAnnouncements from './components/PinnedAnnouncements';
 import RequireRole from './components/RequireRole';
 import HomePage from './pages/HomePage';
 import ClubsPage from './pages/ClubsPage';
@@ -35,6 +36,7 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <Navbar />
+        <PinnedAnnouncements />
         <main>
           <Routes>
             <Route path="/" element={<HomePage />} />

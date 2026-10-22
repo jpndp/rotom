@@ -4,23 +4,27 @@ import { api } from '../api/client';
 import ClubLogo from '../components/ClubLogo';
 
 function ClubsPage() {
-  const [clubs, setClubs] = useState([]);
   const [search, setSearch] = useState('');
-  const [category, setCategory] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [result, setResult] = useState(null);
+  const params = new URLSearchParams();
+  if (search) params.set('search', search);
+  const query = params.toString() ? `?${params.toString()}` : '';
+  const currentResult = result?.query === query ? result : null;
+  const clubs = currentResult?.clubs || [];
+  const error = currentResult?.error || '';
+  const loading = !currentResult;
 
   useEffect(() => {
-    const params = new URLSearchParams();
-    if (search) params.set('search', search);
-    if (category) params.set('category', category);
-    const qs = params.toString() ? `?${params.toString()}` : '';
-    setLoading(true);
-    api.listClubs(qs)
-      .then((data) => setClubs(data.clubs))
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  }, [search, category]);
+    let current = true;
+    api.listClubs(query)
+      .then((data) => {
+        if (current) setResult({ query, clubs: data.clubs, error: '' });
+      })
+      .catch((err) => {
+        if (current) setResult({ query, clubs: [], error: err.message });
+      });
+    return () => { current = false; };
+  }, [query]);
 
   return (
     <div className="container">

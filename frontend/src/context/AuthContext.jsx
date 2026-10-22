@@ -1,18 +1,14 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api, getToken } from '../api/client';
-
-const AuthContext = createContext(null);
+import { AuthContext } from './AuthContextValue';
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => Boolean(getToken()));
 
   useEffect(() => {
     const token = getToken();
-    if (!token) {
-      setLoading(false);
-      return;
-    }
+    if (!token) return;
     api.me()
       .then((data) => setUser(data.user))
       .catch(() => localStorage.removeItem('rotom_token'))
@@ -31,7 +27,7 @@ export function AuthProvider({ children }) {
     setUser(data.user);
   }
 
-    function logout() {
+  function logout() {
     localStorage.removeItem('rotom_token');
     setUser(null);
   }
@@ -46,8 +42,4 @@ export function AuthProvider({ children }) {
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth() {
-  return useContext(AuthContext);
 }

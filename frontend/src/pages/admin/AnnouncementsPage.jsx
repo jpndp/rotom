@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../context/AuthContextValue';
 import { api } from '../../api/client';
 
 function AnnouncementsPage() {
@@ -12,6 +12,7 @@ function AnnouncementsPage() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [scope, setScope] = useState('club'); // 'club' | 'worldwide'
+  const [pinOnWebsite, setPinOnWebsite] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -20,6 +21,10 @@ function AnnouncementsPage() {
 
   function load() {
     api.listAnnouncements(clubId).then((data) => setAnnouncements(data.announcements)).catch((err) => setError(err.message));
+  }
+
+  function announceChange() {
+    window.dispatchEvent(new Event('rotom:announcements-updated'));
   }
 
   useEffect(load, [clubId]);
@@ -31,11 +36,14 @@ function AnnouncementsPage() {
     try {
       const payload = { title, content };
       if (scope === 'club') payload.club = clubId;
+      if (isSiteAdmin && scope === 'worldwide') payload.isPinned = pinOnWebsite;
       // scope === 'worldwide' → no club field at all, backend treats that as platform-wide
       await api.createAnnouncement(payload);
       setTitle('');
       setContent('');
+      setPinOnWebsite(false);
       load();
+      announceChange();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -60,6 +68,7 @@ function AnnouncementsPage() {
       await api.updateAnnouncement(id, { title: editTitle, content: editContent });
       setEditingId(null);
       load();
+      announceChange();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -74,6 +83,21 @@ function AnnouncementsPage() {
     try {
       await api.deleteAnnouncement(id);
       load();
+      announceChange();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function togglePin(announcement) {
+    setBusy(true);
+    setError('');
+    try {
+      await api.updateAnnouncement(announcement._id, { isPinned: !announcement.isPinned });
+      load();
+      announceChange();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -94,6 +118,12 @@ function AnnouncementsPage() {
               <option value="club">This club only</option>
               <option value="worldwide">Worldwide (all clubs)</option>
             </select>
+          </label>
+        )}
+        {isSiteAdmin && scope === 'worldwide' && (
+          <label style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <input type="checkbox" checked={pinOnWebsite} onChange={(e) => setPinOnWebsite(e.target.checked)} />
+            Pin on the website
           </label>
         )}
         {error && <p className="error">{error}</p>}
@@ -117,10 +147,16 @@ function AnnouncementsPage() {
               <>
                 <strong>{a.title}</strong>
                 {!a.club && <span className="badge">Worldwide</span>}
+                {a.isPinned && <span className="badge">Pinned</span>}
                 <span>{a.content}</span>
                 <div className="filters" style={{ marginTop: '0.5rem' }}>
-                  <button className="btn btn-ghost" onClick={() => startEdit(a)}>Edit</button>
-                  <button className="btn btn-ghost" onClick={() => handleDelete(a._id)} disabled={busy}>Delete</button>
+                  {(isSiteAdmin || Boolean(a.club)) && <button className="btn btn-ghost" onClick={() => startEdit(a)}>Edit</button>}
+                  {isSiteAdmin && !a.club && (
+                    <button className="btn btn-ghost" onClick={() => togglePin(a)} disabled={busy}>
+                      {a.isPinned ? 'Unpin from website' : 'Pin on website'}
+                    </button>
+                  )}
+                  {(isSiteAdmin || Boolean(a.club)) && <button className="btn btn-ghost" onClick={() => handleDelete(a._id)} disabled={busy}>Delete</button>}
                 </div>
               </>
             )}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
+import { useAuth } from '../context/AuthContextValue';
 
 const DOW = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 const pad = (n) => String(n).padStart(2, '0');
@@ -9,34 +10,47 @@ const parse = (s) => new Date(`${s.slice(0, 10)}T00:00:00`);
 const dayLabel = (s) => parse(s).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
 
 function EventsPage() {
+  const { user } = useAuth();
+  const isStudent = user?.role === 'student';
   const now = new Date();
   const todayIso = iso(now.getFullYear(), now.getMonth(), now.getDate());
   const [mode, setMode] = useState('list');
   const [when, setWhen] = useState('upcoming');
+  const [eventScope, setEventScope] = useState('global');
   const [cursor, setCursor] = useState(new Date(now.getFullYear(), now.getMonth(), 1));
-  const [events, setEvents] = useState([]);
+  const [eventResult, setEventResult] = useState(null);
   const [blocks, setBlocks] = useState([]);
   const [selected, setSelected] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const y = cursor.getFullYear();
   const m = cursor.getMonth();
   const total = new Date(y, m + 1, 0).getDate();
+  const showingMyEvents = isStudent && eventScope === 'mine';
+  let query = `?from=${todayIso}`;
+  if (mode === 'list') query = `?when=${when}`;
+  else if (mode === 'month') query = `?from=${iso(y, m, 1)}&to=${iso(y, m, total)}`;
+  const requestKey = `${showingMyEvents ? 'mine' : 'global'}:${query}`;
+  const currentEventResult = eventResult?.key === requestKey ? eventResult : null;
+  const events = currentEventResult?.events || [];
+  const error = currentEventResult?.error || '';
+  const loading = !currentEventResult;
 
   useEffect(() => {
     api.listScheduleBlocks().then((data) => setBlocks(data.blocks)).catch(() => {});
   }, []);
 
   useEffect(() => {
-    let query = `?from=${todayIso}`;
-    if (mode === 'list') query = `?when=${when}`;
-    else if (mode === 'month') query = `?from=${iso(y, m, 1)}&to=${iso(y, m, total)}`;
-    setLoading(true);
-    api.listEvents(query)
-      .then((data) => { setEvents(data.events); setError(''); })
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  }, [mode, when, y, m, total, todayIso]);
+    let current = true;
+    const list = showingMyEvents ? api.listMyClubEvents : api.listEvents;
+    list(query)
+      .then((data) => {
+        if (!current) return;
+        setEventResult({ key: requestKey, events: data.events, error: '' });
+      })
+      .catch((err) => {
+        if (current) setEventResult({ key: requestKey, events: [], error: err.message });
+      });
+    return () => { current = false; };
+  }, [query, requestKey, showingMyEvents]);
 
   const byDate = events.reduce((acc, e) => {
     const d = e.date.slice(0, 10);
@@ -65,6 +79,14 @@ function EventsPage() {
         {tab('list', 'List')}{tab('month', 'Month')}{tab('schedule', 'Schedule')}
         <Link to="/announcements" className="btn btn-ghost">Announcements</Link>
       </div>
+      <div className="filters" aria-label="Event audience">
+        {isStudent ? (
+          <>
+            <button type="button" className={`btn ${eventScope === 'mine' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setEventScope('mine')}>My Club Events</button>
+            <button type="button" className={`btn ${eventScope === 'global' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setEventScope('global')}>Global Events</button>
+          </>
+        ) : <strong>Global Events</strong>}
+      </div>
       {mode === 'list' && (
         <div className="filters">
           <button className={when === 'upcoming' ? 'btn btn-primary' : 'btn btn-ghost'} onClick={() => setWhen('upcoming')}>Upcoming</button>
@@ -81,11 +103,11 @@ function EventsPage() {
               <span>{event.club?.name} - {parse(event.date).toLocaleDateString()} - {event.venue}</span>
             </Link>
           ))}
-          {events.length === 0 && <p>No events found.</p>}
+          {events.length === 0 && <p>{showingMyEvents ? 'No events for your active clubs.' : 'No events found.'}</p>}
         </div>
       ))}
 
-      {mode === 'month' && (
+      {mode === 'month' && (loading ? <p>Loading...</p> : (
         <div className="event-calendar">
           <div className="event-calendar-head">
             <button type="button" onClick={() => shift(-1)} aria-label="Previous month">&lsaquo;</button>
@@ -108,13 +130,13 @@ function EventsPage() {
           {selectedBlock && <p className="event-calendar-blocked">{selectedBlock.type === 'midsem' ? 'Midsem period' : 'Holiday'}: {selectedBlock.label}</p>}
           <ul className="event-calendar-list">
             {shown.map(eventRow)}
-            {shown.length === 0 && <li>No events.</li>}
+            {shown.length === 0 && <li>{showingMyEvents ? 'No events for your active clubs.' : 'No events.'}</li>}
           </ul>
           <p className="event-calendar-note">Highlighted dates have events. Red dates are weekends, holidays or midsem periods.</p>
         </div>
-      )}
+      ))}
 
-      {mode === 'schedule' && (
+      {mode === 'schedule' && (loading ? <p>Loading...</p> : (
         <div className="event-calendar">
           {Object.entries(byDate).map(([date, list]) => (
             <div key={date}>
@@ -122,9 +144,9 @@ function EventsPage() {
               <ul className="event-calendar-list">{list.map(eventRow)}</ul>
             </div>
           ))}
-          {events.length === 0 && <p>No upcoming events.</p>}
+          {events.length === 0 && <p>{showingMyEvents ? 'No events for your active clubs.' : 'No upcoming events.'}</p>}
         </div>
-      )}
+      ))}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../context/AuthContextValue';
 import { api } from '../../api/client';
 import { useCooldown } from '../../hooks/useCooldown';
 import IdeasChat from '../../components/IdeasChat';
@@ -11,31 +11,76 @@ function AdminClubPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const cooldown = useCooldown(); // shared by the ideas button and the chat
-  const [club, setClub] = useState(null);
-  const [events, setEvents] = useState([]);
-  const [error, setError] = useState('');
-  const [ideas, setIdeas] = useState(null);
-  const [ideasLoading, setIdeasLoading] = useState(false);
-  const [ideasError, setIdeasError] = useState('');
+  const [clubResult, setClubResult] = useState(null);
+  const [eventsResult, setEventsResult] = useState(null);
+  const [membershipsResult, setMembershipsResult] = useState(null);
+  const [pageErrorResult, setPageErrorResult] = useState(null);
+  const [ideaResult, setIdeaResult] = useState(null);
   const [chatOpen, setChatOpen] = useState(false);
 
-  async function loadEvents() {
-    const data = await api.listEvents(`?club=${clubId}`);
-    setEvents(data.events);
+  const club = clubResult?.clubId === clubId ? clubResult.club : null;
+  const events = eventsResult?.clubId === clubId ? eventsResult.events : [];
+  const currentMembershipsResult = membershipsResult?.clubId === clubId ? membershipsResult : null;
+  const memberships = currentMembershipsResult?.memberships || [];
+  const membershipsLoading = !currentMembershipsResult;
+  const membershipsError = currentMembershipsResult?.error || '';
+  const error = pageErrorResult?.clubId === clubId ? pageErrorResult.error : '';
+  const currentIdeaResult = ideaResult?.clubId === clubId ? ideaResult : null;
+  const ideas = currentIdeaResult?.ideas || null;
+  const ideasLoading = currentIdeaResult?.loading || false;
+  const ideasError = currentIdeaResult?.error || '';
+
+  async function loadEvents(targetClubId = clubId) {
+    const data = await api.listEvents(`?club=${targetClubId}`);
+    setEventsResult({ clubId: targetClubId, events: data.events });
+  }
+
+  async function loadMemberships(targetClubId = clubId) {
+    const data = await api.listClubMemberships(targetClubId);
+    setMembershipsResult({ clubId: targetClubId, memberships: data.memberships });
   }
 
   useEffect(() => {
-    api.getClub(clubId).then((data) => setClub(data.club)).catch((err) => setError(err.message));
-    loadEvents().catch((err) => setError(err.message));
+    let current = true;
+    api.getClub(clubId)
+      .then((data) => { if (current) setClubResult({ clubId, club: data.club }); })
+      .catch((err) => { if (current) setPageErrorResult({ clubId, error: err.message }); });
+    api.listEvents(`?club=${clubId}`)
+      .then((data) => { if (current) setEventsResult({ clubId, events: data.events }); })
+      .catch((err) => { if (current) setPageErrorResult({ clubId, error: err.message }); });
+    api.listClubMemberships(clubId)
+      .then((data) => { if (current) setMembershipsResult({ clubId, memberships: data.memberships }); })
+      .catch((err) => { if (current) setMembershipsResult({ clubId, error: err.message }); });
+    return () => { current = false; };
   }, [clubId]);
+
+  async function handleMembershipStatus(membershipId, status) {
+    try {
+      await api.updateClubMembership(clubId, membershipId, status);
+      await loadMemberships();
+    } catch (err) {
+      setPageErrorResult({ clubId, error: err.message });
+    }
+  }
+
+  async function handleRemoveMembership(membership) {
+    const studentName = membership.student?.name || 'this student';
+    if (!window.confirm(`Remove ${studentName} from this club?`)) return;
+    try {
+      await api.removeClubMembership(clubId, membership._id);
+      await loadMemberships();
+    } catch (err) {
+      setPageErrorResult({ clubId, error: err.message });
+    }
+  }
 
   async function handleDelete(eventId) {
     if (!window.confirm('Remove this event?')) return;
     try {
       await api.deleteEvent(eventId);
-      loadEvents();
+      await loadEvents();
     } catch (err) {
-      setError(err.message);
+      setPageErrorResult({ clubId, error: err.message });
     }
   }
 
@@ -45,27 +90,26 @@ function AdminClubPage() {
       await api.deleteClub(clubId);
       navigate('/admin');
     } catch (err) {
-      setError(err.message);
+      setPageErrorResult({ clubId, error: err.message });
     }
   }
 
   async function handleIdeas() {
     if (ideasLoading || cooldown.active) return;
-    setIdeasLoading(true);
-    setIdeasError('');
+    setIdeaResult({ clubId, loading: true, ideas: null, error: '' });
     try {
       const data = await api.getEventIdeas(clubId);
-      setIdeas(data.ideas);
+      setIdeaResult({ clubId, loading: false, ideas: data.ideas, error: '' });
     } catch (err) {
       if (err.status === 429) cooldown.start(60);
-      else if (err.status === 504) setIdeasError('The AI took too long to answer. Try again.');
-      else if (err.status === 502) setIdeasError('AI suggestions are unavailable. Try again shortly.');
-      else setIdeasError(err.message);
-    } finally {
-      setIdeasLoading(false);
+      const message = err.status === 504 ? 'The AI took too long to answer. Try again.'
+        : err.status === 502 ? 'AI suggestions are unavailable. Try again shortly.'
+          : err.status === 429 ? '' : err.message;
+      setIdeaResult({ clubId, loading: false, ideas: null, error: message });
     }
   }
 
+  if (error && !club) return <div className="container"><p className="error">{error}</p></div>;
   if (!club) return <div className="container"><p>Loading...</p></div>;
 
   return (
@@ -82,6 +126,7 @@ function AdminClubPage() {
         <button onClick={() => setChatOpen(true)} className="btn btn-ghost">Chat with AI</button>
         <Link to={`/admin/clubs/${clubId}/edit`} className="btn btn-ghost">Edit Club</Link>
         <Link to={`/admin/clubs/${clubId}/org-chart`} className="btn btn-ghost">Org Chart</Link>
+        <a href="#club-members" className="btn btn-ghost">Members</a>
         <Link to={`/admin/clubs/${clubId}/announcements`} className="btn btn-ghost">Announcements</Link>
         {user.role === 'website_admin' && <button onClick={handleRemoveClub} className="btn btn-ghost">Remove Club</button>}
       </div>
@@ -107,6 +152,30 @@ function AdminClubPage() {
           ))}
           {ideas.length === 0 && <p>No ideas returned.</p>}
           <p>Ideas are AI suggestions based on this club's past events.</p>
+        </div>
+      )}
+      <h2 id="club-members">Members</h2>
+      {membershipsLoading ? <p>Loading members...</p> : membershipsError ? <p className="error" role="alert">{membershipsError}</p> : (
+        <div className="list">
+          {memberships.map((membership) => (
+            <div className="list-item" key={membership._id}>
+              <strong>{membership.student?.name || 'Unknown student'}</strong>
+              <span>{membership.student?.email}</span>
+              <span className="badge">
+                {membership.status === 'active' ? 'Active member' : membership.status[0].toUpperCase() + membership.status.slice(1)}
+              </span>
+              <div className="filters" style={{ marginTop: '0.5rem' }}>
+                {membership.status === 'pending' && (
+                  <>
+                    <button type="button" className="btn btn-primary" onClick={() => handleMembershipStatus(membership._id, 'active')}>Approve</button>
+                    <button type="button" className="btn btn-ghost" onClick={() => handleMembershipStatus(membership._id, 'rejected')}>Reject</button>
+                  </>
+                )}
+                <button type="button" className="btn btn-ghost" onClick={() => handleRemoveMembership(membership)}>Remove</button>
+              </div>
+            </div>
+          ))}
+          {memberships.length === 0 && <p>No members or requests yet.</p>}
         </div>
       )}
       <div className="list">

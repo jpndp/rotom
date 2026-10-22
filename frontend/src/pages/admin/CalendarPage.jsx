@@ -18,7 +18,11 @@ function CalendarPage() {
   }
 
   useEffect(() => {
-    load().catch((err) => setError(err.message));
+    let current = true;
+    api.listScheduleBlocks()
+      .then((data) => { if (current) setBlocks(data.blocks); })
+      .catch((err) => { if (current) setError(err.message); });
+    return () => { current = false; };
   }, []);
 
   async function handleAdd(e) {

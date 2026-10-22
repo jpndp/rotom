@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../context/AuthContextValue';
 import { api } from '../../api/client';
 import ClubLogo from '../../components/ClubLogo';
 

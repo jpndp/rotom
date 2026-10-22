@@ -144,6 +144,38 @@
   margin-bottom: 0.5rem;
 }
 
+.pinned-announcements {
+  width: min(calc(100% - 2rem), 1100px);
+  margin: 1rem auto 0;
+}
+.pinned-announcement {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--badge-bg);
+  color: var(--text);
+}
+.pinned-announcement > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.pinned-announcement span {
+  color: var(--muted);
+}
+.pinned-announcement button {
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
 .list {
   display: flex;
   flex-direction: column;

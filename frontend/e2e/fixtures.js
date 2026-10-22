@@ -24,3 +24,25 @@ export async function loginAndWait(page, email) {
   await login(page, email)
   await page.waitForURL((url) => url.pathname !== '/login')
 }
+
+export async function createEventForTest(request, email, clubId, title) {
+  const loginResponse = await request.post('http://localhost:5001/api/auth/login', {
+    data: { email, password: PASSWORD },
+  })
+  if (!loginResponse.ok()) throw new Error(`Could not authenticate ${email} for E2E event setup`)
+  const { token } = await loginResponse.json()
+
+  const response = await request.post('http://localhost:5001/api/events', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: {
+      club: clubId,
+      title,
+      category: 'Workshop',
+      date: new Date(Date.now() + 35 * 864e5).toISOString(),
+      startTime: '12:00',
+      venue: 'Main Hall',
+    },
+  })
+  if (!response.ok()) throw new Error(`Could not create E2E event (${response.status()})`)
+  return (await response.json()).event
+}

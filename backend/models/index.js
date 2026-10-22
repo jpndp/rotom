@@ -5,5 +5,6 @@ module.exports = {
   Registration: require('./Registration'),
   Attendance: require('./Attendance'),
   Announcement: require('./Announcement'),
+  Membership: require('./Membership'),
   CalendarBlock: require('./CalendarBlock'),
 };

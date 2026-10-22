@@ -35,7 +35,15 @@ export const api = {
   createClub: (payload) => request('/clubs', { method: 'POST', body: payload, auth: true }),  updateClub: (id, payload) => request(`/clubs/${id}`, { method: 'PATCH', body: payload, auth: true }),
   deleteClub: (id) => request(`/clubs/${id}`, { method: 'DELETE', auth: true }),
   getClubOrgChart: (id) => request(`/clubs/${id}/org-chart`, { auth: true }),
+  getClubMembership: (id) => request(`/clubs/${id}/membership`, { auth: true }),
+  requestClubMembership: (id) => request(`/clubs/${id}/membership`, { method: 'POST', auth: true }),
+  listClubMemberships: (id) => request(`/clubs/${id}/memberships`, { auth: true }),
+  updateClubMembership: (clubId, membershipId, status) =>
+    request(`/clubs/${clubId}/memberships/${membershipId}`, { method: 'PATCH', body: { status }, auth: true }),
+  removeClubMembership: (clubId, membershipId) =>
+    request(`/clubs/${clubId}/memberships/${membershipId}`, { method: 'DELETE', auth: true }),
   listEvents: (query = '') => request(`/events${query}`),
+  listMyClubEvents: (query = '') => request(`/events/mine${query}`, { auth: true }),
   getEvent: (id) => request(`/events/${id}`),
   createEvent: (payload) => request('/events', { method: 'POST', body: payload, auth: true }),
   updateEvent: (id, payload) => request(`/events/${id}`, { method: 'PATCH', body: payload, auth: true }),

@@ -1,16 +1,25 @@
 const mongoose = require('mongoose');
-const { Event, Club } = require('../models');
+const { Event, Club, Membership } = require('../models');
 const catchAsync = require('../utils/catchAsync');
 const { userOwnsClub } = require('../utils/ownership');
 const { validateUserIds } = require('../utils/validateUserRefs');
 
-async function listEvents(req, res) {
+async function findEvents(req, res, clubIds) {
   const { club, from, to, when } = req.query;
   const filter = { isRemoved: false };
 
+  if (clubIds) filter.club = { $in: clubIds };
+
   if (club) {
-    if (!mongoose.Types.ObjectId.isValid(club)) return res.status(400).json({ error: 'Invalid club id' });
-    filter.club = club;
+    if (!mongoose.Types.ObjectId.isValid(club)) {
+      res.status(400).json({ error: 'Invalid club id' });
+      return null;
+    }
+    if (clubIds) {
+      filter.club = { $in: clubIds.filter((id) => id.toString() === club) };
+    } else {
+      filter.club = club;
+    }
   }
 
   if (when === 'upcoming') filter.date = { $gte: new Date() };
@@ -25,7 +34,20 @@ async function listEvents(req, res) {
     if (!isNaN(toDate)) filter.date = { ...filter.date, $lte: toDate };
   }
 
-  const events = await Event.find(filter).populate('club', 'name category').sort({ date: 1 });
+  return Event.find(filter).populate('club', 'name category').sort({ date: 1 });
+}
+
+async function listEvents(req, res) {
+  const events = await findEvents(req, res);
+  if (!events) return;
+  res.json({ events });
+}
+
+async function listMyClubEvents(req, res) {
+  if (req.user.role !== 'student') return res.status(403).json({ error: 'Only students can view my club events' });
+  const memberships = await Membership.find({ student: req.user.id, status: 'active' }).select('club');
+  const events = await findEvents(req, res, memberships.map((membership) => membership.club));
+  if (!events) return;
   res.json({ events });
 }
 
@@ -102,6 +124,7 @@ async function deleteEvent(req, res) {
 
 module.exports = {
   listEvents: catchAsync(listEvents),
+  listMyClubEvents: catchAsync(listMyClubEvents),
   getEvent: catchAsync(getEvent),
   createEvent: catchAsync(createEvent),
   updateEvent: catchAsync(updateEvent),

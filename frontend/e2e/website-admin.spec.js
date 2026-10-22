@@ -1,19 +1,23 @@
 import { test, expect } from '@playwright/test'
-import { USERS, loginAndWait, seedIds } from './fixtures.js'
+import { USERS, createEventForTest, loginAndWait, seedIds } from './fixtures.js'
 
 test.describe('website admin', () => {
-  test('can filter events by club and remove one from the moderation page', async ({ page }) => {
+  test('can filter events by club and remove one from the moderation page', async ({ page, request }) => {
+    const { debateId } = seedIds()
+    const title = `E2E moderation event ${Date.now()}`
+    await createEventForTest(request, USERS.webAdmin, debateId, title)
     await loginAndWait(page, USERS.webAdmin)
     await page.goto('/admin/moderation')
     await expect(page.getByRole('heading', { name: 'Moderate Events' })).toBeVisible()
 
     await page.getByRole('combobox').selectOption({ label: 'Debate Society' })
-    await expect(page.getByText('Debate Night')).toBeVisible()
+    await expect(page.getByText(title)).toBeVisible()
     await expect(page.getByText('Robotics Workshop')).toHaveCount(0)
 
     page.once('dialog', (d) => d.accept())
-    await page.locator('.list-item', { hasText: 'Debate Night' }).getByRole('button', { name: 'Remove' }).click()
-    await expect(page.getByText('No events found.')).toBeVisible()
+    await page.locator('.list-item', { hasText: title }).getByRole('button', { name: 'Remove' }).click()
+    await expect(page.getByText(title)).toHaveCount(0)
+    await expect(page.getByText('Debate Night')).toBeVisible()
   })
 
   test('can post a worldwide announcement', async ({ page }) => {

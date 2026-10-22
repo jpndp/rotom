@@ -603,3 +603,124 @@ describe('attendance rules', () => {
     expect(rows).toHaveLength(0); // cancelled students drop off the list
   });
 });
+
+describe('club membership requests', () => {
+  it('lets students request, see status and retry after rejection; club and website admins manage memberships', async () => {
+    const site = await siteAdminToken();
+    const a = await seedClub(site, 'Membership A');
+    const b = await seedClub(site, 'Membership B');
+    const owner = await clubAdminToken('membership-owner@rotom.edu', a.club);
+    const otherOwner = await clubAdminToken('membership-other@rotom.edu', b.club);
+    await signup('membership-student@rotom.edu');
+    const student = (await login('membership-student@rotom.edu')).token;
+    const as = (token, method, path, body) => {
+      let req = request(app)[method](path);
+      if (token) req = req.set('Authorization', `Bearer ${token}`);
+      if (body) req = req.send(body);
+      return req;
+    };
+    const statusPath = `/api/clubs/${a.club}/membership`;
+    const membershipsPath = `/api/clubs/${a.club}/memberships`;
+
+    expect((await as(null, 'get', statusPath)).status).toBe(401);
+    expect((await as(owner, 'get', statusPath)).status).toBe(403);
+    expect((await as(student, 'get', statusPath)).body.membership).toBeNull();
+
+    const requested = await as(student, 'post', statusPath);
+    expect(requested.status).toBe(201);
+    expect(requested.body.membership.status).toBe('pending');
+    const membershipId = requested.body.membership._id;
+    expect((await as(student, 'post', statusPath)).body.membership.status).toBe('pending');
+    expect((await as(student, 'get', statusPath)).body.membership.status).toBe('pending');
+
+    const listed = await as(owner, 'get', membershipsPath);
+    expect(listed.status).toBe(200);
+    expect(listed.body.memberships).toHaveLength(1);
+    expect(listed.body.memberships[0].student.email).toBe('membership-student@rotom.edu');
+    expect((await as(otherOwner, 'get', membershipsPath)).status).toBe(403);
+    expect((await as(otherOwner, 'patch', `${membershipsPath}/${membershipId}`, { status: 'active' })).status).toBe(403);
+
+    expect((await as(site, 'patch', `${membershipsPath}/${membershipId}`, { status: 'active' })).body.membership.status).toBe('active');
+    expect((await as(student, 'get', statusPath)).body.membership.status).toBe('active');
+    expect((await as(owner, 'patch', `${membershipsPath}/${membershipId}`, { status: 'rejected' })).body.membership.status).toBe('rejected');
+    expect((await as(student, 'get', statusPath)).body.membership.status).toBe('rejected');
+    expect((await as(student, 'post', statusPath)).body.membership.status).toBe('pending');
+    expect((await as(site, 'patch', `${membershipsPath}/${membershipId}`, { status: 'active' })).status).toBe(200);
+    expect((await as(site, 'delete', `${membershipsPath}/${membershipId}`)).status).toBe(200);
+    expect((await as(student, 'get', statusPath)).body.membership).toBeNull();
+    expect((await as(owner, 'get', membershipsPath)).body.memberships).toHaveLength(0);
+  });
+});
+
+describe('pinned platform announcements', () => {
+  it('allows only website admins to pin platform-wide announcements', async () => {
+    const site = await siteAdminToken();
+    const { club } = await seedClub(site, 'Announcement Club');
+    const owner = await clubAdminToken('announcement-owner@rotom.edu', club);
+    await signup('announcement-student@rotom.edu');
+    const student = (await login('announcement-student@rotom.edu')).token;
+    const as = (token, method, path, body) => {
+      let req = request(app)[method](path);
+      if (token) req = req.set('Authorization', `Bearer ${token}`);
+      if (body) req = req.send(body);
+      return req;
+    };
+
+    const created = await as(site, 'post', '/api/announcements', { title: 'Pinned', content: 'Platform notice', isPinned: true });
+    expect(created.status).toBe(201);
+    expect(created.body.announcement.isPinned).toBe(true);
+    const feed = await as(null, 'get', '/api/announcements');
+    expect(feed.body.announcements.find((item) => item._id === created.body.announcement._id).isPinned).toBe(true);
+
+    expect((await as(owner, 'post', '/api/announcements', { title: 'No', content: 'No', isPinned: true })).status).toBe(403);
+    expect((await as(site, 'post', '/api/announcements', { club, title: 'Club pin', content: 'No', isPinned: true })).status).toBe(400);
+    expect((await as(student, 'post', '/api/announcements', { title: 'No', content: 'No', isPinned: true })).status).toBe(403);
+
+    const clubNotice = await as(owner, 'post', '/api/announcements', { club, title: 'Club notice', content: 'Visible to club' });
+    expect(clubNotice.status).toBe(201);
+    expect((await as(owner, 'patch', `/api/announcements/${clubNotice.body.announcement._id}`, { isPinned: true })).status).toBe(403);
+    expect((await as(site, 'patch', `/api/announcements/${clubNotice.body.announcement._id}`, { isPinned: true })).status).toBe(400);
+    expect((await as(site, 'patch', `/api/announcements/${created.body.announcement._id}`, { isPinned: false })).body.announcement.isPinned).toBe(false);
+  });
+});
+
+describe('my club events scope', () => {
+  it("returns only events for a student's active memberships and keeps the public feed global", async () => {
+    const site = await siteAdminToken();
+    const a = await seedClub(site, 'Events A');
+    const b = await seedClub(site, 'Events B');
+    const ownerA = await clubAdminToken('events-owner-a@rotom.edu', a.club);
+    const ownerB = await clubAdminToken('events-owner-b@rotom.edu', b.club);
+    await signup('events-student@rotom.edu');
+    const student = (await login('events-student@rotom.edu')).token;
+    const as = (token, method, path) => {
+      let req = request(app)[method](path);
+      if (token) req = req.set('Authorization', `Bearer ${token}`);
+      return req;
+    };
+
+    expect((await as(null, 'get', '/api/events/mine')).status).toBe(401);
+    expect((await as(site, 'get', '/api/events/mine')).status).toBe(403);
+    expect((await as(student, 'post', `/api/clubs/${a.club}/membership`)).status).toBe(201);
+    const requestedB = await as(student, 'post', `/api/clubs/${b.club}/membership`);
+    expect(requestedB.status).toBe(201);
+    const approvedB = await request(app).patch(`/api/clubs/${b.club}/memberships/${requestedB.body.membership._id}`)
+      .set('Authorization', `Bearer ${ownerB}`).send({ status: 'active' });
+    expect(approvedB.status).toBe(200);
+
+    const mineWhilePending = await as(student, 'get', '/api/events/mine');
+    expect(mineWhilePending.status).toBe(200);
+    expect(mineWhilePending.body.events.map((event) => event._id)).toEqual([b.event]);
+    const global = await as(null, 'get', '/api/events');
+    expect(global.body.events.map((event) => event._id).sort()).toEqual([a.event, b.event].sort());
+
+    const requestedA = await as(student, 'get', `/api/clubs/${a.club}/membership`);
+    const approvedA = await request(app).patch(`/api/clubs/${a.club}/memberships/${requestedA.body.membership._id}`)
+      .set('Authorization', `Bearer ${ownerA}`).send({ status: 'active' });
+    expect(approvedA.status).toBe(200);
+    const mine = await as(student, 'get', '/api/events/mine');
+    expect(mine.body.events.map((event) => event._id).sort()).toEqual([a.event, b.event].sort());
+    const onlyA = await as(student, 'get', `/api/events/mine?club=${a.club}`);
+    expect(onlyA.body.events.map((event) => event._id)).toEqual([a.event]);
+  });
+});

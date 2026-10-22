@@ -17,18 +17,23 @@ async function listAnnouncements(req, res) {
 }
 
 async function createAnnouncement(req, res) {
-  const { club, title, content } = req.body;
+  const { club, title, content, isPinned = false } = req.body;
   if (!title || !content || typeof title !== 'string' || typeof content !== 'string') {
     return res.status(400).json({ error: 'title and content are required' });
   }
+  if (typeof isPinned !== 'boolean') return res.status(400).json({ error: 'isPinned must be a boolean' });
 
   const isSiteAdmin = req.user.role === 'website_admin';
 
+  if (isPinned && !isSiteAdmin) return res.status(403).json({ error: 'Only a website admin can pin a website announcement' });
+
   if (!club) {
     if (!isSiteAdmin) return res.status(403).json({ error: 'Only a website_admin can post a platform-wide announcement' });
-    const announcement = await Announcement.create({ club: null, postedBy: req.user.id, title, content });
+    const announcement = await Announcement.create({ club: null, postedBy: req.user.id, title, content, isPinned });
     return res.status(201).json({ announcement });
   }
+
+  if (isPinned) return res.status(400).json({ error: 'Only platform-wide announcements can be pinned' });
 
   if (!mongoose.Types.ObjectId.isValid(club)) return res.status(400).json({ error: 'Invalid club id' });
   const clubExists = await Club.exists({ _id: club, isActive: true });
@@ -64,6 +69,14 @@ async function findOwnedAnnouncement(req, res) {
 async function updateAnnouncement(req, res) {
   const announcement = await findOwnedAnnouncement(req, res);
   if (!announcement) return;
+  const isSiteAdmin = req.user.role === 'website_admin';
+
+  if ('isPinned' in req.body) {
+    if (!isSiteAdmin) return res.status(403).json({ error: 'Only a website admin can pin a website announcement' });
+    if (typeof req.body.isPinned !== 'boolean') return res.status(400).json({ error: 'isPinned must be a boolean' });
+    if (announcement.club) return res.status(400).json({ error: 'Only platform-wide announcements can be pinned' });
+    announcement.isPinned = req.body.isPinned;
+  }
 
   const { title, content } = req.body;
   if (title !== undefined) {

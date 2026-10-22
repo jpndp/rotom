@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { USERS, loginAndWait, seedIds } from './fixtures.js'
+import { USERS, createEventForTest, loginAndWait, seedIds } from './fixtures.js'
 
 test.describe('club admin', () => {
   test('sees the management controls for their own club', async ({ page }) => {
@@ -14,25 +14,31 @@ test.describe('club admin', () => {
     await expect(page.getByRole('button', { name: 'Remove Club' })).toHaveCount(0)
   })
 
-  test('can remove one of their own events', async ({ page }) => {
+  test('can remove one of their own events', async ({ page, request }) => {
+    const { roboticsId } = seedIds()
+    const title = `E2E removable robotics event ${Date.now()}`
+    await createEventForTest(request, USERS.roboticsAdmin, roboticsId, title)
     await loginAndWait(page, USERS.roboticsAdmin)
-    await page.goto(`/admin/clubs/${seedIds().roboticsId}`)
-    const row = page.locator('.list-item', { hasText: 'Robotics Cleanup Day' })
+    await page.goto(`/admin/clubs/${roboticsId}`)
+    const row = page.locator('.list-item', { hasText: title })
     page.once('dialog', (d) => d.accept())
     await row.getByRole('button', { name: 'Remove', exact: true }).click()
-    await expect(page.getByText('Robotics Cleanup Day')).toHaveCount(0)
+    await expect(page.getByText(title)).toHaveCount(0)
     await expect(page.getByText('Robotics Workshop')).toBeVisible()
   })
 
-  test('cannot remove an event of another club', async ({ page }) => {
+  test('cannot remove an event of another club', async ({ page, request }) => {
+    const { debateId } = seedIds()
+    const title = `E2E protected debate event ${Date.now()}`
+    await createEventForTest(request, USERS.debateAdmin, debateId, title)
     await loginAndWait(page, USERS.roboticsAdmin)
-    await page.goto(`/admin/clubs/${seedIds().debateId}`)
-    const row = page.locator('.list-item', { hasText: 'Debate Night' })
+    await page.goto(`/admin/clubs/${debateId}`)
+    const row = page.locator('.list-item', { hasText: title })
     page.once('dialog', (d) => d.accept())
     await row.getByRole('button', { name: 'Remove', exact: true }).click()
     await expect(page.locator('p.error')).toBeVisible()
     await page.reload()
-    await expect(page.getByText('Debate Night')).toBeVisible()
+    await expect(page.getByText(title)).toBeVisible()
   })
 })
 

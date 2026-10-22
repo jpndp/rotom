@@ -1,5 +1,5 @@
 const express = require('express');
-const { listEvents, getEvent, createEvent, updateEvent, deleteEvent } = require('../controllers/eventController');
+const { listEvents, listMyClubEvents, getEvent, createEvent, updateEvent, deleteEvent } = require('../controllers/eventController');
 const { registerForEvent, cancelRegistration, listEventRegistrations } = require('../controllers/registrationController');
 const { listAttendance, markAttendance } = require('../controllers/attendanceController');
 const requireAuth = require('../middleware/auth');
@@ -7,6 +7,7 @@ const requireRole = require('../middleware/requireRole');
 
 const router = express.Router();
 
+router.get('/mine', requireAuth, listMyClubEvents);
 router.get('/', listEvents);
 router.get('/:id', getEvent);
 router.post('/', requireAuth, requireRole('club_admin', 'website_admin'), createEvent);

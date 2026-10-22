@@ -6,6 +6,7 @@ const announcementSchema = new Schema(
     postedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     title: { type: String, required: true },
     content: { type: String, required: true },
+    isPinned: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
