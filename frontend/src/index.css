@@ -9,6 +9,7 @@
   --border: #d9cfc3;
   --brand: #4a2441;
   --brand-contrast: #faf7f2;
+  --amethyst: #70409a;
   --card-bg: #faf7f2;
   --accent: #a8832f;
   --on-accent: #2a1f06;
@@ -24,6 +25,7 @@
   --border: #2e242e;
   --brand: #c58bb5;
   --brand-contrast: #100c10;
+  --amethyst: #c6a0e8;
   --card-bg: #1a141a;
   --accent: #d4af5a;
   --on-accent: #231a05;
@@ -37,6 +39,13 @@ body {
   background: var(--bg);
   color: var(--text);
   transition: background 0.15s ease, color 0.15s ease;
+}
+a:not(.btn) {
+  color: var(--amethyst);
+}
+a:not(.btn):hover {
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.15em;
 }
 h1, h2 {
   color: var(--brand);

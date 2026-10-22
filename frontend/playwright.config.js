@@ -1,4 +1,4 @@
-import { defineConfig } from '@playwright/test'
+import { defineConfig, devices } from '@playwright/test'
 
 const testDb = process.env.E2E_MONGODB_URI
 if (!testDb) {
@@ -18,6 +18,10 @@ export default defineConfig({
   workers: 1,
   globalSetup: './e2e/global-setup.js',
   use: { baseURL: `http://localhost:${WEB_PORT}` },
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    { name: 'mobile-chromium', use: { ...devices['Pixel 7'], browserName: 'chromium' } },
+  ],
   webServer: [
     {
       cwd: '../backend',

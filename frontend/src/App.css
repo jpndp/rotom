@@ -20,7 +20,7 @@
   flex: 1;
 }
 .nav-links a {
-  color: var(--text);
+  color: var(--amethyst);
   text-decoration: none;
 }
 .nav-links a:hover {
@@ -89,6 +89,7 @@
 
 .filters {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.75rem;
   margin: 1rem 0 1.5rem;
 }
@@ -233,12 +234,13 @@
 .event-calendar h3 { margin: 0.875rem 0 0.25rem; font-size: 1rem; }
 .event-calendar-list { margin: 0; padding: 0; list-style: none; font-size: 0.875rem; }
 .event-calendar-list li { padding: 0.5rem 0; border-top: 1px solid var(--cal-line); }
-.event-calendar-list a { color: inherit; font-weight: 600; }
+.event-calendar-list a { color: var(--amethyst); font-weight: 600; }
 .event-calendar-blocked { margin: 0.25rem 0 0.5rem; font-size: 0.875rem; font-weight: 600; color: var(--cal-red); }
 .datepicker-note, .event-calendar-note { margin: 0.625rem 0 0; font-size: 0.75rem; opacity: 0.65; }
 
 .ideas-chat { position: fixed; top: 0; right: 0; z-index: 30; display: flex; flex-direction: column; width: min(26rem, 100vw); height: 100vh; background: var(--card-bg); color: var(--text); border-left: 1px solid var(--border); box-shadow: -8px 0 24px rgba(0, 0, 0, 0.18); }
 .ideas-chat-head { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); }
+.ai-disclaimer { margin: 0.25rem 0 0; color: var(--muted); font-size: 0.8rem; }
 .ideas-chat-body { flex: 1; display: flex; flex-direction: column; gap: 0.75rem; padding: 1rem; overflow-y: auto; }
 .ideas-chat-turn { display: flex; flex-direction: column; gap: 0.5rem; }
 .ideas-chat-turn.user { align-items: flex-end; }
@@ -263,4 +265,51 @@
 .orgchart li:first-child::after { border-radius: 0.5rem 0 0 0; }
 .orgchart ul ul::before { content: ''; position: absolute; top: 0; left: 50%; height: 1.25rem; border-left: 1px solid var(--line); }
 .orgchart-node { display: inline-flex; flex-direction: column; gap: 0.125rem; min-width: 7.5rem; padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-top: 3px solid var(--accent); border-radius: 0.5rem; background: var(--card-bg); color: var(--text); }
-.orgchart-node span { font-size: 0.8rem; color: var(--muted); } 
+.orgchart-node span { font-size: 0.8rem; color: var(--muted); }
+
+@media (max-width: 640px) {
+  .navbar {
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+  }
+  .nav-links {
+    order: 2;
+    flex: 1 1 100%;
+    gap: 0.5rem 1rem;
+  }
+  .nav-links a {
+    min-height: 44px;
+    padding: 0.65rem 0;
+  }
+  .nav-auth {
+    order: 3;
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    padding-top: 0.25rem;
+  }
+  .container {
+    padding: 1.25rem 1rem;
+  }
+  .dashboard-section-header {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .dashboard-section-header .filters {
+    margin: 0;
+  }
+  .btn,
+  .filters input,
+  .filters select {
+    min-height: 44px;
+  }
+  .event-calendar {
+    width: 100%;
+    padding: 0.75rem;
+  }
+  .event-calendar-grid {
+    gap: 1px;
+  }
+}

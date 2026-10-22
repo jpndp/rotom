@@ -7,7 +7,7 @@ const catchAsync = require('../utils/catchAsync');
 const { userOwnsClub } = require('../utils/ownership');
 const { generateIdeas, chatIdeas } = require('../services/ai');
 
-// Gemini free tier: 3 req/min per key. One shared cap plus a per-user cap; both routes share the same counters.
+// Both AI routes share per-user and global counters.
 const limiter = (max, keyGenerator) => rateLimit({
   windowMs: 60_000,
   max,
@@ -15,8 +15,8 @@ const limiter = (max, keyGenerator) => rateLimit({
   skip: () => process.env.NODE_ENV === 'test',
   message: { error: 'Too many requests, try again in a minute' },
 });
-const userLimit = limiter(2, (req) => String(req.user.id || req.user._id));
-const globalLimit = limiter(3, () => 'ai');
+const userLimit = limiter(5, (req) => String(req.user.id || req.user._id));
+const globalLimit = limiter(100, () => 'ai');
 const adminOnly = (req, res, next) => (
   ['club_admin', 'website_admin'].includes(req.user.role) ? next() : res.status(403).json({ error: 'Forbidden' })
 );

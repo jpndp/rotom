@@ -85,6 +85,7 @@ function AdminClubPage() {
         <Link to={`/admin/clubs/${clubId}/announcements`} className="btn btn-ghost">Announcements</Link>
         {user.role === 'website_admin' && <button onClick={handleRemoveClub} className="btn btn-ghost">Remove Club</button>}
       </div>
+      <p className="ai-disclaimer">AI suggestions may be inaccurate; review them before use. Do not include personal details.</p>
       {error && <p className="error">{error}</p>}
       {chatOpen && <IdeasChat clubId={clubId} cooldown={cooldown} onClose={() => setChatOpen(false)} />}
       {cooldown.active && !chatOpen && (

@@ -43,7 +43,10 @@ function IdeasChat({ clubId, cooldown, onClose }) {
   return (
     <aside className="ideas-chat" aria-label="Chat with AI about event ideas">
       <div className="ideas-chat-head">
-        <strong>Chat with AI</strong>
+        <div>
+          <strong>Chat with AI</strong>
+          <p className="ai-disclaimer">AI suggestions may be inaccurate; review them before use. Do not include personal details.</p>
+        </div>
         <button type="button" className="btn btn-ghost" onClick={onClose}>Close</button>
       </div>
       <div className="ideas-chat-body">

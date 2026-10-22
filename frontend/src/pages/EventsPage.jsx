@@ -61,7 +61,10 @@ function EventsPage() {
   return (
     <div className="container">
       <h1>Events</h1>
-      <div className="filters">{tab('list', 'List')}{tab('month', 'Month')}{tab('schedule', 'Schedule')}</div>
+      <div className="filters">
+        {tab('list', 'List')}{tab('month', 'Month')}{tab('schedule', 'Schedule')}
+        <Link to="/announcements" className="btn btn-ghost">Announcements</Link>
+      </div>
       {mode === 'list' && (
         <div className="filters">
           <button className={when === 'upcoming' ? 'btn btn-primary' : 'btn btn-ghost'} onClick={() => setWhen('upcoming')}>Upcoming</button>

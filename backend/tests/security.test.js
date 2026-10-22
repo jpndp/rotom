@@ -85,6 +85,34 @@ describe('response redaction', () => {
   });
 });
 
+describe('authentication rate limits', () => {
+  it('counts failed login attempts only and excludes /auth/me', async () => {
+    const email = 'rate-limit@rotom.edu';
+    await signup(email);
+    expect(app.get('trust proxy')).toBe(1);
+
+    const realEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'development';
+    try {
+      for (let i = 0; i < 20; i++) {
+        const res = await request(app).post('/api/auth/login').send({ email, password: 'pass123' });
+        expect(res.status).toBe(200);
+      }
+      for (let i = 0; i < 25; i++) {
+        expect((await request(app).get('/api/auth/me')).status).toBe(401);
+      }
+      for (let i = 0; i < 20; i++) {
+        const res = await request(app).post('/api/auth/login').send({ email, password: 'wrong-password' });
+        expect(res.status).toBe(401);
+      }
+      const blocked = await request(app).post('/api/auth/login').send({ email, password: 'wrong-password' });
+      expect(blocked.status).toBe(429);
+    } finally {
+      process.env.NODE_ENV = realEnv;
+    }
+  });
+});
+
 describe('RBAC / IDOR', () => {
   it('blocks a student from creating an event', async () => {
     await signup('student1@rotom.edu');
@@ -298,7 +326,7 @@ await Registration.create({ event, student: s2, status: 'registered' });
 });
 
 describe('AI rate limits', () => {
-  it('applies per-user and shared caps across both routes, and students never use quota', async () => {
+  it('allows five requests per user across both routes, and students never use quota', async () => {
     const site = await siteAdminToken();
     const { club } = await seedClub(site, 'A');
     const owner = await clubAdminToken('owner@rotom.edu', club);
@@ -313,13 +341,15 @@ describe('AI rate limits', () => {
     process.env.NODE_ENV = 'development';
     try {
       expect((await ideas(stu)).status).toBe(403);   // blocked before any limiter runs
-      expect((await ideas(owner)).status).toBe(200); // owner 1 of 2, shared 1 of 3
-      expect((await chat(owner)).status).toBe(200);  // owner 2 of 2, shared 2 of 3 (chat shares counters)
+      expect((await ideas(owner)).status).toBe(200);
+      expect((await chat(owner)).status).toBe(200);
+      expect((await ideas(owner)).status).toBe(200);
+      expect((await chat(owner)).status).toBe(200);
+      expect((await ideas(owner)).status).toBe(200); // fifth request shared across routes
       const blocked = await ideas(owner);
-      expect(blocked.status).toBe(429);              // per-user cap
+      expect(blocked.status).toBe(429); // per-user cap
       expect(blocked.body.error).toBe('Too many requests, try again in a minute');
-      expect((await ideas(site)).status).toBe(200);  // site admin 1 of 2, shared 3 of 3
-      expect((await ideas(site)).status).toBe(429);  // shared cap
+      expect((await ideas(site)).status).toBe(200); // global cap does not undercut per-user limit
     } finally {
       process.env.NODE_ENV = realEnv;
     }
