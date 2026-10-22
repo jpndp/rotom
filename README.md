@@ -113,20 +113,5 @@ Do not expose AI_API_KEY, JWT_SECRET, or MongoDB credentials in frontend variabl
 Deployment
 Rotom's frontend is a Vite single-page application and its backend is an Express API. They can be deployed separately. The frontend host must rewrite application routes to index.html; the backend should expose /api/health as its health-check endpoint.
 
-Before going live:
-
-Create a separate production MongoDB database and least-privilege database user.
-Configure all backend secrets in the backend host's environment settings.
-Set FRONTEND_URL to the exact deployed frontend origin, without a trailing slash.
-Set VITE_API_URL to the deployed backend origin plus /api and rebuild the frontend.
-Confirm the backend is running with NODE_ENV=production and starts with npm start.
-Sign up through the deployed site, then promote the intended account to website_admin using the provided promotion script. Verify the database name printed by the script before proceeding.
-Test guest, student, club-admin, and website-admin flows after deployment.
-Project Status
-The core application phases are implemented, including authentication and roles, club/event management, student and club-admin experiences, moderation, scheduling, AI assistance, theme support, event listings, organization chart, and club logos.
-
-Author
-Japandeep Singh
-GitHub: @jpndp
 
 ⋮⋮⋮⋮
